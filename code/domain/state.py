@@ -2,6 +2,7 @@ from dataclasses import dataclass,field
 from typing import Any
 from code.domain.contexts import TaskContext, SystemContext
 from code.domain.messages import UserMessage, ProcessedMessage
+from code.task.flow.models import Flow
 
 
 @dataclass
@@ -78,6 +79,7 @@ class DialogueState:
     sessions:list[Session]=field(default_factory=list)
     current_session_id:str|None=None
     pending_turn:Turn|None=None
+
     #字典变为一个对象
     @classmethod
     def from_dict(cls, data:dict[str,Any])->"DialogueState":
@@ -102,3 +104,46 @@ class DialogueState:
             "current_session_id":self.current_session_id,
             "pending_turn":self.pending_turn.to_dict() if self.pending_turn else None
         }
+
+    def remove_system_task(self):
+        """
+        关闭当前系统任务
+        :return:
+        """
+        self.active_system_task=None
+
+    def interrupt_active_task(self):
+        self.paused_tasks.append(self.active_task)
+        self.active_task=None
+
+    def create_active_task(self, active_task:TaskContext):
+        self.active_task=active_task
+
+    def create_system_task(self, system_task:SystemContext):
+        self.active_system_task=system_task
+
+    def set_slots(self, slots:dict[str,Any]):
+        self.active_task.slots.update(slots)
+
+    def cancel_task(self):
+        self.active_task=None
+        self.active_system_task=None
+
+    def resume_task(self, id:str):
+        for task in self.paused_tasks:
+            if task.flow_id ==id:
+                self.active_task=task
+                self.paused_tasks.remove(task)
+                return
+    def current_session(self)->Session|None:
+        for session in self.sessions:
+            if self.current_session_id == session.session_id:
+                return session
+        return None
+
+    def get_current_context(self):
+        return self.active_system_task or self.active_task
+
+
+
+

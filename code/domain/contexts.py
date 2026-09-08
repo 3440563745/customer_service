@@ -28,10 +28,8 @@ class SystemContext:
     step_id:str|None=None
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SystemContext":
-        return cls(
-            flow_id=data["flow_id"],
-            step_id=data["step_id"],
-        )
+        clz=FLOW_ID_TO_CONTEXT_CLASS[data["flow_id"]]
+        return clz(**data)
 #active_task:TaskContext|None=None
     #当前面的active_task为taskcontext的子类，那么调用to_dict的时候，也是调用的之类的对应这个方法，
     #但是子类里面没有这个方法，全调用的父类的方法，然后父类里面的return asdict(self)就是会return
@@ -49,4 +47,22 @@ class InterruptedSystemContext(SystemContext):
     interrupted_flow_name:str=""
     started_flow_id:str=""
     started_flow_name:str=""
-
+@dataclass
+class ResumedSystemContext(SystemContext):
+    resumed_flow_id:str=""
+    resumed_flow_name:str=""
+@dataclass
+class CanceledSystemContext(SystemContext):
+    canceled_flow_id:str=""
+    canceled_flow_name:str=""
+@dataclass
+class CollectSystemContext(SystemContext):
+    response:dict[str,Any]=field(default_factory=dict)
+    slot_name:str=""
+FLOW_ID_TO_CONTEXT_CLASS={
+    "system_task_started":StartedSystemContext,
+    "system_task_interrupted":InterruptedSystemContext,
+    "system_task_canceled":CanceledSystemContext,
+    "system_task_resumed":ResumedSystemContext,
+    "system_collect_information":CollectSystemContext,
+}
